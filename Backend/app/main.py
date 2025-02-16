@@ -1,17 +1,44 @@
-from fastapi import FastAPI
-from app.routes.image_processing import router as image_router
-from app.routes.health import router as health_router
+from fastapi import FastAPI, UploadFile, File, HTTPException
+import uvicorn
+import shutil
+from pathlib import Path
+# Import AI processing modules (to be implemented later)
+from app.services.segmentation import segment_walls
+from app.services.color_blending import apply_paint
+from app.services.recommender import recommend_colors
 
-app = FastAPI(title="AI Virtual Painter Backend", version="1.0")
+app = FastAPI()
 
-# Register API routes
-app.include_router(image_router, prefix="/api")
-app.include_router(health_router, prefix="/api")
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 @app.get("/")
 def home():
-    return {"message": "AI Virtual Painter Backend is running 🚀"}
+    return {"message": "Welcome to AI Virtual Painter Backend"}
+
+@app.post("/upload/")
+def upload_image(file: UploadFile = File(...)):
+    file_path = UPLOAD_DIR / file.filename
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"filename": file.filename, "message": "File uploaded successfully"}
+
+@app.post("/process-image/")
+def process_image(file: UploadFile = File(...), color: str = "#FF5733"):
+    file_path = UPLOAD_DIR / file.filename
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # AI Processing Steps
+    segmented_image = segment_walls(file_path)
+    painted_image = apply_paint(segmented_image, color)
+    
+    return {"filename": file.filename, "message": "Image processed successfully"}
+
+@app.get("/recommend-colors/")
+def get_color_recommendations():
+    colors = recommend_colors()
+    return {"recommended_colors": colors}
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
