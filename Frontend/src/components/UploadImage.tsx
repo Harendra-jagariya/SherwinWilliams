@@ -1,53 +1,30 @@
-// src/components/UploadImage.tsx
-'use client';
+"use client"
+import { useState } from "react";
 
-import { useState } from 'react';
+const ImageUploader: React.FC = () => {
+  const [image, setImage] = useState<File | null>(null);
 
-const UploadImage = () => {
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const handleUpload = async () => {
+    if (!image) return;
 
-  const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImageSrc(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const formData = new FormData();
+    formData.append("file", image);
 
-      // Send the image to the backend API
-      const formData = new FormData();
-      formData.append('file', file);
+    const response = await fetch("http://localhost:8000/upload/", {
+      method: "POST",
+      body: formData
+    });
 
-      const response = await fetch('/api/process-image', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-      console.log(result);
-    }
+    const data = await response.json();
+    alert(data.message);
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleImageUpload}
-        className="mb-4"
-      />
-      {imageSrc && (
-        <img
-          src={imageSrc}
-          alt="Uploaded"
-          className="max-w-full h-auto rounded-lg shadow-md"
-        />
-      )}
+    <div>
+      <input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
+      <button onClick={handleUpload}>Upload</button>
     </div>
   );
 };
 
-export default UploadImage;
+export default ImageUploader;
